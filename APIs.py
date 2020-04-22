@@ -132,3 +132,52 @@ def get_all_users():
 
    return jsonify({'users': result})  
 
+
+@app.route('/bills', methods=['POST'])
+@token_required
+def create_bill(current_user,public_id):
+   
+   data = request.get_json() 
+   
+   customer = data['customer']
+   customerName = customer['name']
+   customerIDType = customer['idtype'] 
+   customerID = customer['id']
+
+
+   customer = Customer.query.filter_by(customerID=customerID).first()   
+   if not customer:   
+       new_customer = Customer(name=customerName,idType=customerIDType,customerID=customerID)
+       db.session.add(new_customer)
+       db.session.commit()
+
+   print('the values are'+customerName,customerIDType,customerID)
+
+   bills = data['bills']
+   recurr = ''
+   amountExactness = ''
+   displayName = ''
+   amount = ''
+
+   now = datetime.datetime.utcnow()
+   current_time = now.strftime ("%Y-%m-%dT%H:%M:%S%Z")
+
+   print('sssd'+current_time)
+
+   for bill in bills:
+     recurr = bill['recurrence']
+     amountExactness = bill['amountExactness']
+     aggregates = bill['aggregates']
+     total = aggregates['total']
+     displayName = total['displayName']
+     amountSec = total['amount']
+     amount = amountSec['value']
+     print('the second values are'+recurr,amountExactness,displayName,amount)
+   
+     new_bill = Bills(generated_on=current_time,recurrence=recurr,displayName=displayName,amountExactness=amountExactness,amount=int(amount),customerIDType=customerIDType,customerID=customerID,customerName=customerName,fetchStatus=True)  
+     db.session.add(new_bill)   
+     db.session.commit()   
+   
+
+   return jsonify({'message' : 'new bill has been created'})
+
