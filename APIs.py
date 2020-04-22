@@ -258,3 +258,52 @@ def fetch_bill(current_user,public_id):
       responseData['error']=errorSection
 
       return jsonify(responseData)
+
+@app.route('/bills/fetchreceipt', methods=['POST'])
+@token_required
+def create_receipt(current_user,public_id):
+   
+   data = request.get_json() 
+
+   billID = data['billerBillID']
+   platformBillID = data['platformBillID']
+   paymentDetails = data['paymentDetails']
+   platformTransactionRefID = paymentDetails['platformTransactionRefID']
+   uniquePaymentRefID = paymentDetails['uniquePaymentRefID']
+   amountPaidSec = paymentDetails['amountPaid']
+   amountPaid = amountPaidSec['value']
+   billAmountSec = paymentDetails['billAmount']
+   billAmount = amountPaidSec['value']
+
+   now = datetime.datetime.utcnow()
+   current_time = now.strftime ("%Y-%m-%dT%H:%M:%S%Z")
+
+   paidBill = Bills.query.filter_by(id=billID).first()   
+   if not paidBill:   
+       return jsonify({'message': 'invalid bill id and bill doesnt not exist'})   
+
+   db.session.delete(paidBill)
+   db.session.commit()
+
+   new_receipt = Receipts(generated_on=current_time,billerID=billID,platformBillID=platformBillID,platformTransactionRefID=platformTransactionRefID,uniquePaymentRefID=uniquePaymentRefID,amountPaid=int(amountPaid),billAmount=int(billAmount))  
+   db.session.add(new_receipt)   
+   db.session.commit()   
+
+   generatedReceipt = Receipts.query.filter_by(billerID=billID).first()   
+   receiptID = generatedReceipt.id
+
+   responseData = {}
+   responseData['status'] = 200
+   responseData['success'] = True
+   dataSection= {}
+   dataSection['billerBillID']=billID
+   dataSection['platformBillID']=platformBillID
+   dataSection['platformTransactionRefID']=platformTransactionRefID
+   receiptSection={}
+   receiptSection['id']=receiptID
+   receiptSection['date']=generatedReceipt.generated_on
+   dataSection['receipt']=receiptSection
+   responseData['data']=dataSection      
+
+   return jsonify(responseData)
+
