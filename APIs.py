@@ -181,3 +181,80 @@ def create_bill(current_user,public_id):
 
    return jsonify({'message' : 'new bill has been created'})
 
+
+@app.route('/bills/fetch', methods=['POST'])
+@token_required
+def fetch_bill(current_user,public_id):
+   
+   data = request.get_json() 
+   print(data)
+   customerIdentifiers = data['customerIdentifiers']
+   identifier=customerIdentifiers[0]
+   identifierName = identifier['attributeName']
+   identifierID = identifier['attributeValue'] 
+
+   responseData = {}  
+
+   customer = Customer.query.filter_by(customerID=identifierID).first()   
+
+   if customer:
+      bills = Bills.query.filter_by(customerID=identifierID)
+      
+      dataSection = {}
+      customerSection = {}
+      customerSection['name'] = customer.name
+      customerSection['idType'] = customer.idType
+      
+      dataSection['customer'] = customerSection
+      billArray = []
+      if not bills.first():
+         responseData['status'] = 200
+         responseData['success'] = True
+         billDetailsSection = {}
+         billDetailsSection['billFetchStatus']='NO_OUTSTANDING'
+         billDetailsSection['bills'] = billArray
+         dataSection['billDetails'] = billDetailsSection
+         responseData['data'] = dataSection
+         return jsonify(responseData)
+
+      for bill in bills:
+        billJson = {}
+        billJson['billerBillID'] = bill.id
+        billJson['generatedOn'] = bill.generated_on
+        billJson['recurrence'] = bill.recurrence
+        billJson['amountExactness'] = bill.amountExactness
+        customerSection = {}
+        customerSection['id'] = customer.customerID
+        billJson['customerAccount'] = customerSection
+        aggregateSection = {}
+        totalSection = {}
+        totalSection['displayName']  = bill.displayName
+        amountSection = {}
+        amountSection['value'] = bill.amount
+        totalSection['amount'] = amountSection
+        aggregateSection['aggregates'] = totalSection
+        billArray.append(billJson)
+      
+      billDetailsSection = {}
+      billDetailsSection['billFetchStatus']='AVAILABLE'
+      billDetailsSection['bills'] = billArray
+      dataSection["billDetails"] = billDetailsSection
+
+      responseData['data'] = dataSection
+      responseData['status'] = 200
+      responseData['success'] = True
+
+      return jsonify(responseData)
+      
+   if not customer:   
+      responseData['status'] = 404
+      responseData['success'] = False
+      errorSection = {}
+      errorSection['code']='Error101'
+      errorSection['title']='Customer not found'
+      errorSection['traceID']='TR0001ACB'
+      errorSection['description']='You are trying to retrieve bills for the customer that do not exist in our database'
+      errorSection['docURL']='www.gokul.live/errorreporting'
+      responseData['error']=errorSection
+
+      return jsonify(responseData)
