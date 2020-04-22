@@ -307,3 +307,5 @@ def create_receipt(current_user,public_id):
 
    return jsonify(responseData)
 
+if  __name__ == '__main__':  
+     app.run(host='0.0.0.0',port=80,debug=True)
